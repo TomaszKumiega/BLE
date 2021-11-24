@@ -1,0 +1,35 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.31424.327
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ERG_BLE.Android", "iNode-BLE\iNode-BLE.Android\ERG_BLE.Android.csproj", "{50768D15-50D1-4E15-A062-B0F7E33AD3E8}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ERG_BLE", "iNode-BLE\iNode-BLE\ERG_BLE.csproj", "{15688209-E7A3-4E69-82EB-53EC65124418}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{50768D15-50D1-4E15-A062-B0F7E33AD3E8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{50768D15-50D1-4E15-A062-B0F7E33AD3E8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{50768D15-50D1-4E15-A062-B0F7E33AD3E8}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
+		{50768D15-50D1-4E15-A062-B0F7E33AD3E8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{50768D15-50D1-4E15-A062-B0F7E33AD3E8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{50768D15-50D1-4E15-A062-B0F7E33AD3E8}.Release|Any CPU.Deploy.0 = Release|Any CPU
+		{15688209-E7A3-4E69-82EB-53EC65124418}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{15688209-E7A3-4E69-82EB-53EC65124418}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{15688209-E7A3-4E69-82EB-53EC65124418}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
+		{15688209-E7A3-4E69-82EB-53EC65124418}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{15688209-E7A3-4E69-82EB-53EC65124418}.Release|Any CPU.Build.0 = Release|Any CPU
+		{15688209-E7A3-4E69-82EB-53EC65124418}.Release|Any CPU.Deploy.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {9259A23F-E41B-4C0A-9118-0037FA2EB995}
+	EndGlobalSection
+EndGlobal
