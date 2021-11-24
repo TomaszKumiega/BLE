@@ -176,14 +176,17 @@ namespace ERGBLE.ViewModels
                     }
                 }
             }
-            catch (BluetoothNotEnabledException e)
+            catch (BluetoothNotEnabledException)
             {
-                //TODO: user prompt
+                await App.Current.MainPage.DisplayAlert("Błąd", "Do skanowania wymagane jest włączone bluetooth i lokalizacja.", "OK");
             }
         }
 
         public async Task SaveRecords(bool clearRecordsAndSetCurrentDate)
         {
+            if (Processing)
+                return;
+
             DeviceDataReader.ClearOutRecordsAndSetTime = clearRecordsAndSetCurrentDate;
             try
             {

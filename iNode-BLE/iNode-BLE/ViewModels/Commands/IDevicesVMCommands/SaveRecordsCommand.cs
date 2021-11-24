@@ -12,7 +12,7 @@ namespace ERGBLE.ViewModels.Commands
 
         public bool CanExecute(object parameter)
         {
-            return ViewModel.Devices?.Count > 0 && !ViewModel.Processing;
+            return ViewModel.Devices?.Count > 0;
         }
 
         public async void Execute(object parameter)
