@@ -17,7 +17,7 @@ namespace ERGBLE.Models
 
         public bool ContainsTime()
         {
-            return (Bytes[0] >> 4) == 0b1010 && ((Bytes[5] > 0x81 && Bytes[5] < 0x89) || Bytes[0] == 0x8C || Bytes[0] == 0x8D || Bytes[0] == 0x08);
+            return ((Bytes[0] >> 4) == 0b1010) && (Bytes[5] == 0x00 || (Bytes[5] > 0x81 && Bytes[5] < 0x89) || Bytes[5] == 0x8C || Bytes[5] == 0x8D || Bytes[5] == 0x08);
         }
 
         public bool IsTemperatureDataFrame()
