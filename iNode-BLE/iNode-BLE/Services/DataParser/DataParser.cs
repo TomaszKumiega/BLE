@@ -41,17 +41,66 @@ namespace ERGBLE.Services
             return dataFrames;
         }
 
-        private void ParseDataFramesAndAddToDictionary(SortedDictionary<DateTime, List<string>> dictionary, List<DataFrame> dataFrames, string deviceName, int leftoverData)
+        private List<string> ParseDataFrames(List<DataFrame> dataFrames, string deviceName, int leftoverData)
         {
+            var dictionary = new SortedDictionary<DateTime, string>();
+
+            dictionary.Add(new DateTime(0), "Data");
+
             var temperatureDataFrames = dataFrames.Where(x => x.IsTemperatureDataFrame()).ToList();
             var humidityDataFrames = dataFrames.Where(x => x.IsHumidityDataFrame()).ToList();
             
             if (temperatureDataFrames.Count > 0)
-                AddValuesToDictionary(dictionary, temperatureDataFrames, $"{deviceName}  -  temperatura", leftoverData);
+            {
+                dictionary[new DateTime(0)] += $",,{deviceName}  -  temperatura";
+                AddValuesToDictionary(dictionary, temperatureDataFrames, leftoverData, 1);
+            }
+                
 
             if (humidityDataFrames.Count > 0)
-                AddValuesToDictionary(dictionary, humidityDataFrames, $"{deviceName}  -  wilgotność", leftoverData);
+            {
+                dictionary[new DateTime(0)] += $",,{deviceName}  -  wilgotność";
+                AddValuesToDictionary(dictionary, humidityDataFrames, leftoverData, 2);
+            }
 
+            return dictionary.Values.ToList();
+        }
+
+        private void AddValuesToDictionary(SortedDictionary<DateTime, string> dictionary, List<DataFrame> dataFrames, int leftoverData, int columnNumber)
+        {
+            var valuesDictionary = dataFrames.Count > 0 ? GetMeasurementsDictionary(dataFrames, leftoverData) : null;
+
+            var datesToAdd = valuesDictionary.Keys.Where(x => !dictionary.Keys.Contains(x)).ToList();
+
+            foreach (var date in datesToAdd)
+            {
+                dictionary.Add(date, date.ToString("s"));
+            }
+
+            foreach (var pair in valuesDictionary)
+            {
+                if (dictionary.ContainsKey(pair.Key))
+                {
+                    dictionary[pair.Key] += columnNumber == 1 ? $",,{pair.Value:F02}" : $",,{pair.Value:F01}";
+                }
+                else
+                {
+                    var date = pair.Key.ToString("s");
+                    var value = columnNumber == 1 ? $"{pair.Value:F02}" : $"{pair.Value:F01}";
+                    
+                    var sb = new StringBuilder();
+                    sb.Append(date);
+
+                    for (int i = 0; i < columnNumber; ++i)
+                    {
+                        sb.Append(",,");
+                    }
+
+                    sb.Append(value);
+                    
+                    dictionary.Add(pair.Key, sb.ToString());
+                }
+            }
         }
 
         private Dictionary<DateTime, float> GetMeasurementsDictionary(List<DataFrame> dataFrames, int leftoverData)
@@ -80,81 +129,13 @@ namespace ERGBLE.Services
 
             return dictionary;
         }
-
-        private void AddValuesToDictionary(SortedDictionary<DateTime, List<string>> dictionary, List<DataFrame> dataFrames, string columnName, int leftoverData)
-        {
-            var valuesDictionary = dataFrames.Count > 0 ? GetMeasurementsDictionary(dataFrames, leftoverData) : null;
-
-            var listOfColumns = dictionary[new DateTime(0)].Count;
-            dictionary[new DateTime(0)].Add(columnName);
-            var datesToAdd = valuesDictionary.Keys.Where(x => !dictionary.Keys.Contains(x)).ToList();
-
-            foreach (var date in datesToAdd)
-            {
-                if (listOfColumns == 0)
-                    dictionary.Add(date, new List<string>());
-                else
-                    dictionary.Add(date, new List<string>(new string[listOfColumns]));
-            }
-
-            foreach (var pair in dictionary)
-            {
-                if (valuesDictionary.TryGetValue(pair.Key, out float value))
-                {
-                    pair.Value.Add($"{value:F02}");
-                }
-            }
-        }
         #endregion
 
-        public void ParseMeasurementDataAndAddToDictionary(SortedDictionary<DateTime, List<string>> dictionary, List<byte[]> data, string deviceName)
+        public List<string> ParseMeasurementData(List<byte[]> data, string deviceName)
         {
-            if (dictionary.Count == 0)
-                dictionary.Add(new DateTime(0), new List<string>());
-
             var dataFrames = GetDataFrames(data, out int leftoverData);
 
-            ParseDataFramesAndAddToDictionary(dictionary, dataFrames, deviceName, leftoverData);
-        }
-
-        public List<string> ParseDictionaryToText(SortedDictionary<DateTime, List<string>> dictionary)
-        {
-            var lines = new List<string>();
-            StringBuilder sb = new StringBuilder();
-
-            #region Column headers
-            var first = dictionary.First();
-            
-            sb.Append("Data;");
-
-            foreach (var t in first.Value)
-            {
-                sb.Append(t + ';');
-            }
-
-            sb.AppendLine();
-            
-            lines.Add(sb.ToString());
-            
-            sb.Clear();
-            #endregion
-
-            foreach (var pair in dictionary.Skip(1))
-            {
-                sb.Append(pair.Key.ToString("s") + ';');
-                
-                foreach (var t in pair.Value)
-                {
-                    sb.Append(t + ';');
-                }
-
-                sb.AppendLine();
-                lines.Add(sb.ToString());
-                
-                sb.Clear();
-            }
-
-            return lines;
+            return ParseDataFrames(dataFrames, deviceName, leftoverData);
         }
     }
 }

@@ -13,7 +13,7 @@ namespace ERGBLE.ViewModels.Commands
 
         public bool CanExecute(object parameter)
         {
-            return true;
+            return !ViewModel.Processing;
         }
 
         public async void Execute(object parameter)

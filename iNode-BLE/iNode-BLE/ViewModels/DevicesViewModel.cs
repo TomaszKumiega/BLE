@@ -48,6 +48,7 @@ namespace ERGBLE.ViewModels
             {
                 _processing = value;
                 SaveRecordsCommand.RaiseCanExecuteChanged();
+                ScanForDevicesCommand.RaiseCanExecuteChanged();
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Processing)));
             }
         }
@@ -82,23 +83,27 @@ namespace ERGBLE.ViewModels
 
         private void InitializeProgressActions()
         {
-            DeviceScanner.SetProcessing = value =>
+            Action<bool> setProcessingAction = (value) =>
             {
-                Processing = value;
-            };
-            DeviceScanner.SetProgress = (actual, max) =>
-            {
-                Progress = actual / max;
+                App.Current.Dispatcher.BeginInvokeOnMainThread(() =>
+                {
+                    Processing = value;
+                });
             };
 
-            DeviceDataReader.SetProcessing = value =>
+            Action<float, float> setProgressAction = (actual, max) =>
             {
-                Processing = value;
+                App.Current.Dispatcher.BeginInvokeOnMainThread(() =>
+                {
+                    Progress = actual / max;
+                });
             };
-            DeviceDataReader.SetProgress = (actual, max) =>
-            {
-                Progress = actual / max;
-            };
+
+            DeviceScanner.SetProcessing = setProcessingAction;
+            DeviceScanner.SetProgress = setProgressAction;
+
+            DeviceDataReader.SetProcessing = setProcessingAction;
+            DeviceDataReader.SetProgress = setProgressAction;
         }
         private void InitializeEventHandlers()
         {
@@ -178,7 +183,10 @@ namespace ERGBLE.ViewModels
             }
             catch (BluetoothNotEnabledException)
             {
-                await App.Current.MainPage.DisplayAlert("Błąd", "Do skanowania wymagane jest włączone bluetooth i lokalizacja.", "OK");
+                App.Current.Dispatcher.BeginInvokeOnMainThread(() =>
+                {
+                    App.Current.MainPage.DisplayAlert("Błąd", "Do skanowania wymagane jest włączone bluetooth i lokalizacja.", "OK");
+                });
             }
         }
 
