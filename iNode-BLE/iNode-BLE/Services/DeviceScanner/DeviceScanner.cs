@@ -73,7 +73,7 @@ namespace ERGBLE.Services
 
             Devices.Clear();
 
-            Adapter.ScanMode = ScanMode.LowLatency;
+            Adapter.ScanMode = ScanMode.Balanced;
 
             SetProcessing(true);
             Adapter.ScanTimeout = scanTimeoutMs;

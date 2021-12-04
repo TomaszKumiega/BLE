@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using Xamarin.Essentials;
 
@@ -21,7 +22,7 @@ namespace ERGBLE.Services
         private IDataParser DataParser { get; }
         private int CurrentDeviceIndex { get; set; }
         private List<IDevice> Devices { get; set; }
-        private SortedDictionary<DateTime, List<string>> DataDictionary { get; }
+        private List<string> FilePaths { get; set; }
 
         private event EventHandler NextDevice;
 
@@ -40,40 +41,66 @@ namespace ERGBLE.Services
             DeviceConnector = deviceConnector;
             DataConverter = dataConverter;
             DataParser = dataParser;
-            DataDictionary = new SortedDictionary<DateTime, List<string>>();
+            FilePaths = new List<string>();
 
             NextDevice += OnNextDevice;
         }
 
-        private async Task ParseRecords(List<byte[]> listOfRecords, string deviceName)
+        private void Reset()
         {
-            await Task.Run(() => DataParser.ParseMeasurementDataAndAddToDictionary(DataDictionary, listOfRecords, deviceName));
+            ListOfFailedConnections = new List<string>();
+            FilePaths = new List<string>();
+            CurrentDeviceIndex = 0;
         }
 
-        private async Task ShareRecordsInTextFile()
+        private async Task SaveRecords(List<byte[]> listOfRecords, string deviceName)
         {
             var date = DateTime.Now.ToString().Replace('/', '-');
             var path = Path.Combine(FileSystem.AppDataDirectory, date + ".txt");
 
-            var lines = DataParser.ParseDictionaryToText(DataDictionary);
-            File.AppendAllLines(path, lines);
-            
-            await Share.RequestAsync(new ShareFileRequest()
-            {
-                Title = "Udostępnij plik z pomiarami",
-                File = new ShareFile(path)
-            });
+            var lines = await Task.Run(() => DataParser.ParseMeasurementData(listOfRecords, deviceName));
 
-            //TODO usuwanie pliku po udostępnieniu
+            File.AppendAllLines(path, lines);
+
+            FilePaths.Add(path);
+        }
+
+        private async Task ShareRecordsInTextFile()
+        {
+            var fileShareList = new List<ShareFile>();
+
+            foreach (var filePath in FilePaths)
+            {
+                fileShareList.Add(new ShareFile(filePath));
+            }
+
+            await Share.RequestAsync(new ShareMultipleFilesRequest()
+            {
+                Title = "Udostępnij pliki z pomiarami",
+                Files = fileShareList
+            });
         }
 
         private async void OnNextDevice(object sender, EventArgs args)
         {
             if (CurrentDeviceIndex >= Devices.Count)
             {
+                var sb = new StringBuilder();
+                sb.AppendLine($"Zapisano dane z {Devices.Count - ListOfFailedConnections.Count}/{Devices.Count} urządzeń.");
+
+                if (ListOfFailedConnections.Count > 0)
+                {
+                    sb.AppendLine("Nie udało się zapisać danych z urządzeń:");
+
+                    foreach (var failedConnName in ListOfFailedConnections)
+                    {
+                        sb.AppendLine($"- {failedConnName}");
+                    }
+                }
+
+                App.Current.Dispatcher.BeginInvokeOnMainThread(() => App.Current.MainPage.DisplayAlert("Zapisywanie zakończone", sb.ToString(), "Kontynuuj"));
                 await ShareRecordsInTextFile();
 
-                CurrentDeviceIndex = 0;
                 FinishedProcessing?.Invoke(this, EventArgs.Empty);
                 SetProcessing(false);
                 SetProgress(0, 1);
@@ -82,7 +109,18 @@ namespace ERGBLE.Services
             }
 
             SetProgress(CurrentDeviceIndex, Devices.Count);
-            await SaveRecords(Devices[CurrentDeviceIndex]);
+            
+            try
+            {
+                var success = await SaveRecords(Devices[CurrentDeviceIndex]);
+                
+                if (!success)
+                    ListOfFailedConnections.Add(Devices[CurrentDeviceIndex].Name);
+            }
+            catch (Exception)
+            {
+                ListOfFailedConnections.Add(Devices[CurrentDeviceIndex].Name);
+            }
         }
 
         public async Task SaveRecords(List<IDevice> devices)
@@ -95,9 +133,22 @@ namespace ERGBLE.Services
             if (await Permissions.CheckStatusAsync<Permissions.StorageWrite>() != PermissionStatus.Granted)
                 throw new PermissionNotGranted(typeof(Permissions.StorageWrite));
 
+            Reset();
+
             Devices = devices;
             SetProcessing(true);
-            await SaveRecords(Devices[0]);
+
+            try
+            {
+                var success = await SaveRecords(Devices[0]);
+
+                if (!success)
+                    ListOfFailedConnections.Add(Devices[0].Name);
+            }
+            catch (Exception)
+            {
+                ListOfFailedConnections.Add(Devices[0].Name);
+            }
         }
 
         private async Task<bool> SaveRecords(IDevice device)
@@ -153,7 +204,7 @@ namespace ERGBLE.Services
                         await eepromPageCharacteristic.StopUpdatesAsync();
                     });
 
-                    await ParseRecords(listOfRecords, device.Name);
+                    await SaveRecords(listOfRecords, device.Name);
                    
                     if (ClearOutRecordsAndSetTime)
                         await DeviceConnector.ClearOutRecordsAndSetCurrentTimeAsync(eepromControlCharacteristic);
