@@ -85,26 +85,7 @@ namespace ERGBLE.Services
         {
             if (CurrentDeviceIndex >= Devices.Count)
             {
-                var sb = new StringBuilder();
-                sb.AppendLine($"Zapisano dane z {Devices.Count - ListOfFailedConnections.Count}/{Devices.Count} urządzeń.");
-
-                if (ListOfFailedConnections.Count > 0)
-                {
-                    sb.AppendLine("Nie udało się zapisać danych z urządzeń:");
-
-                    foreach (var failedConnName in ListOfFailedConnections)
-                    {
-                        sb.AppendLine($"- {failedConnName}");
-                    }
-                }
-
-                App.Current.Dispatcher.BeginInvokeOnMainThread(() => App.Current.MainPage.DisplayAlert("Zapisywanie zakończone", sb.ToString(), "Kontynuuj"));
-                await ShareRecordsInTextFile();
-
-                FinishedProcessing?.Invoke(this, EventArgs.Empty);
-                SetProcessing(false);
-                SetProgress(0, 1);
-
+                await OnAllDevicesProcessed();
                 return;
             }
 
@@ -120,7 +101,31 @@ namespace ERGBLE.Services
             catch (Exception)
             {
                 ListOfFailedConnections.Add(Devices[CurrentDeviceIndex].Name);
+                NextDevice?.Invoke(this, EventArgs.Empty);
             }
+        }
+
+        private async Task OnAllDevicesProcessed()
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine($"Zapisano dane z {Devices.Count - ListOfFailedConnections.Count}/{Devices.Count} urządzeń.");
+
+            if (ListOfFailedConnections.Count > 0)
+            {
+                sb.AppendLine("Nie udało się zapisać danych z urządzeń:");
+
+                foreach (var failedConnName in ListOfFailedConnections)
+                {
+                    sb.AppendLine($"- {failedConnName}");
+                }
+            }
+
+            App.Current.Dispatcher.BeginInvokeOnMainThread(() => App.Current.MainPage.DisplayAlert("Zapisywanie zakończone", sb.ToString(), "Kontynuuj"));
+            await ShareRecordsInTextFile();
+
+            FinishedProcessing?.Invoke(this, EventArgs.Empty);
+            SetProcessing(false);
+            SetProgress(0, 1);
         }
 
         public async Task SaveRecords(List<IDevice> devices)
@@ -148,19 +153,15 @@ namespace ERGBLE.Services
             catch (Exception)
             {
                 ListOfFailedConnections.Add(Devices[0].Name);
+                NextDevice?.Invoke(this, EventArgs.Empty);
             }
         }
 
         private async Task<bool> SaveRecords(IDevice device)
         {
-            try
-            {
-                await Adapter.ConnectToDeviceAsync(device);
-            }
-            catch (DeviceConnectionException)
-            {
-                return false;
-            }
+            bool error = false;
+
+            await Adapter.ConnectToDeviceAsync(device);
 
             var eepromService = await DeviceConnector.GetEepromServiceAsync(device);
             var eepromControlCharacteristic = await DeviceConnector.GetEEPROMControlCharacteristicAsync(eepromService);
@@ -201,7 +202,15 @@ namespace ERGBLE.Services
                 {
                     await MainThread.InvokeOnMainThreadAsync(async () =>
                     {
-                        await eepromPageCharacteristic.StopUpdatesAsync();
+                        try
+                        {
+                            await eepromPageCharacteristic.StopUpdatesAsync();
+                        }
+                        catch (Exception ex)
+                        {
+                            ListOfFailedConnections.Add(Devices[CurrentDeviceIndex].Name);
+                            error = true;
+                        }
                     });
 
                     await SaveRecords(listOfRecords, device.Name);
@@ -213,7 +222,15 @@ namespace ERGBLE.Services
 
                     await MainThread.InvokeOnMainThreadAsync(async () =>
                     {
-                        await Adapter.DisconnectDeviceAsync(device);
+                        try
+                        {
+                            await Adapter.DisconnectDeviceAsync(device);
+                        }
+                        catch (Exception ex)
+                        {
+                            ListOfFailedConnections.Add(Devices[CurrentDeviceIndex].Name);
+                            error = true;
+                        }
                     });
                     
                     CurrentDeviceIndex++;
@@ -223,12 +240,23 @@ namespace ERGBLE.Services
 
             await MainThread.InvokeOnMainThreadAsync(async () => 
             {
-                await eepromPageCharacteristic.StartUpdatesAsync();
+                try
+                {
+                    await eepromPageCharacteristic.StartUpdatesAsync();
+                }
+                catch (Exception ex)
+                {
+                    ListOfFailedConnections.Add(Devices[CurrentDeviceIndex].Name);
+                    error = true;
+                }
             });
+
+            if (error) return false;
 
             await DeviceConnector.SendReadOutCommandAsync(eepromControlCharacteristic);
 
             return true;
         }
+
     }
 }

@@ -122,7 +122,9 @@ namespace ERGBLE.Services
 
                 foreach (var val in values)
                 {
-                    dictionary.Add(lastCalculatedDateTime, val);
+                    if (!dictionary.ContainsKey(lastCalculatedDateTime))
+                        dictionary.Add(lastCalculatedDateTime, val);
+
                     lastCalculatedDateTime = lastCalculatedDateTime.AddMinutes(1);
                 }
             }
